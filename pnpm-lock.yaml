@@ -305,6 +305,12 @@ importers:
       dotenv: 8.6.0
       graphql-request: 3.6.1
 
+  packages/types:
+    specifiers:
+      typescript: ^4.2.4
+    devDependencies:
+      typescript: 4.5.2
+
 packages:
 
   /@actions/core/1.6.0:
