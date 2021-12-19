@@ -307,7 +307,10 @@ importers:
 
   packages/types:
     specifiers:
+      mongoose: ^5.11.18
       typescript: ^4.2.4
+    dependencies:
+      mongoose: 5.13.13
     devDependencies:
       typescript: 4.5.2
 

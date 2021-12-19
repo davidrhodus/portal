@@ -37,5 +37,8 @@
   "homepage": "https://github.com/pokt-foundation/portal#readme",
   "devDependencies": {
     "typescript": "^4.2.4"
+  },
+  "dependencies": {
+    "mongoose": "^5.11.18"
   }
 }

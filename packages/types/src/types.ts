@@ -1,3 +1,5 @@
+import { Types, Document } from 'mongoose'
+
 // DB-specific types
 export interface IFreeTierApplicationAccount {
   address: string
@@ -20,7 +22,7 @@ export interface INetworkData {
   createdAt: Date
 }
 
-export interface IPreStakedApp {
+export interface IPreStakedApp extends Document {
   chain: string
   status: string
   createdAt: Date | number
@@ -30,7 +32,7 @@ export interface IPreStakedApp {
   gatewayAAT: IGatewayAAT
 }
 
-export interface IUser {
+export interface IUser extends Document {
   provider?: string
   email: string
   username: string
@@ -66,7 +68,7 @@ export interface INotificationSettings {
   createdAt?: Date | number
 }
 
-export interface IApplication {
+export interface IApplication extends Document {
   chain: string
   name: string
   user: unknown
@@ -95,8 +97,8 @@ export interface IApplication {
 }
 
 // Load balancer types
-export interface ILoadBalancer {
-  user: unknown
+export interface ILoadBalancer extends Document {
+  user: Types.ObjectId
   name: string
   requestTimeOut: string
   applicationIDs: string[]
@@ -108,7 +110,7 @@ export interface ILoadBalancer {
 
 
 // Network types
-export interface IChain {
+export interface IChain extends Document {
   _id: string
   appCount: number
   description: string
