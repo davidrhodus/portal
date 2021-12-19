@@ -243,11 +243,13 @@ router.post(
     const user: IUser = await User.findOne({ email: processedEmail })
 
     if (!user) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'EMAIL_DOES_NOT_EXIST', message: 'Email does not exist' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'EMAIL_DOES_NOT_EXIST', message: 'Email does not exist' },
+          ],
+        })
+      )
     }
     const resetToken = crypto.randomBytes(32).toString('hex')
     const hashedResetToken = await bcrypt.hash(resetToken, SALT_ROUNDS)
@@ -289,14 +291,16 @@ router.post(
     const { plainToken, password1, password2, email } = req.body
 
     if (!plainToken || !password1 || !password2 || !email) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'MISSING_FIELDS',
-            message: 'Missing required fields in body',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'MISSING_FIELDS',
+              message: 'Missing required fields in body',
+            },
+          ],
+        })
+      )
     }
 
     // @ts-ignore
@@ -304,21 +308,25 @@ router.post(
     const processedEmail = email
 
     if (!isPasswordValid) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NOT_SECURE_PASSWORD',
-            message: 'Password is not secure enough',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NOT_SECURE_PASSWORD',
+              message: 'Password is not secure enough',
+            },
+          ],
+        })
+      )
     }
     if (password1 !== password2) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NON_MATCHING_PASSWORDS', message: "Passwords don't match" },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NON_MATCHING_PASSWORDS', message: "Passwords don't match" },
+          ],
+        })
+      )
     }
 
     const storedToken = await Token.findOne({
@@ -326,18 +334,22 @@ router.post(
     })
 
     if (!storedToken) {
-      throw HttpError.BAD_REQUEST({
-        errors: [{ id: 'EXPIRED_TOKEN', message: 'Token has expired' }],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [{ id: 'EXPIRED_TOKEN', message: 'Token has expired' }],
+        })
+      )
     }
     const isTokenMatching = await bcrypt.compare(plainToken, storedToken.token)
 
     if (!isTokenMatching) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NON_MATCHING_TOKEN', message: 'Token is not matching' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NON_MATCHING_TOKEN', message: 'Token is not matching' },
+          ],
+        })
+      )
     }
     const newHashedPassword = await bcrypt.hash(password1, SALT_ROUNDS)
 
@@ -361,9 +373,11 @@ router.post(
     const user = await User.findOne({ email })
 
     if (!plainToken || !email || !user) {
-      throw HttpError.BAD_REQUEST({
-        errors: [{ id: 'MISSING_FIELDS', message: 'Invalid request' }],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [{ id: 'MISSING_FIELDS', message: 'Invalid request' }],
+        })
+      )
     }
 
     const processedEmail = decodeURIComponent(email)
@@ -391,15 +405,17 @@ router.post(
         templateName: 'SignUp',
         toEmail: user.email,
       })
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'EXPIRED_TOKEN',
-            message:
-              'Your verification token has expired. We have sent a new one to your email.',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'EXPIRED_TOKEN',
+              message:
+                'Your verification token has expired. We have sent a new one to your email.',
+            },
+          ],
+        })
+      )
     }
 
     const tokenMatches = await Promise.all(
@@ -415,15 +431,17 @@ router.post(
     )
 
     if (!isTokenMatching) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'INVALID_TOKEN',
-            message:
-              'Your verification token seems to be invalid. Did you use the latest email we sent?',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'INVALID_TOKEN',
+              message:
+                'Your verification token seems to be invalid. Did you use the latest email we sent?',
+            },
+          ],
+        })
+      )
     }
     await User.updateOne(
       {

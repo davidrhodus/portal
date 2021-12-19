@@ -1,4 +1,4 @@
-import express, { Response, Request } from 'express'
+import express, { Response, Request, NextFunction } from 'express'
 import crypto from 'crypto'
 import { typeGuard, QueryAppResponse } from '@pokt-network/pocket-js'
 import { IAppInfo, GetApplicationQuery } from './types'
@@ -71,21 +71,23 @@ router.use(authenticate)
 
 router.get(
   '',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const id = (req.user as IUser)._id
     const lbs = await LoadBalancer.find({
       user: id,
     })
 
     if (!lbs) {
-      throw HttpError.NOT_FOUND({
-        errors: [
-          {
-            id: 'NONEXISTENT_APPLICATION',
-            message: 'User does not have an active application',
-          },
-        ],
-      })
+      return next(
+        HttpError.NOT_FOUND({
+          errors: [
+            {
+              id: 'NONEXISTENT_APPLICATION',
+              message: 'User does not have an active application',
+            },
+          ],
+        })
+      )
     }
 
     // Process all the LBs to "clean them up" for the interface.
@@ -176,7 +178,7 @@ router.get(
 
 router.post(
   '',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { name, chain, gatewaySettings = DEFAULT_GATEWAY_SETTINGS } = req.body
 
     const id = (req.user as IUser)._id
@@ -187,14 +189,16 @@ router.post(
       !(env('GODMODE_ACCOUNTS') as string[]).includes(id.toString())
 
     if (isNewAppRequestInvalid) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'ALREADY_EXISTING',
-            message: 'User has reached their free app limit.',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'ALREADY_EXISTING',
+              message: 'User has reached their free app limit.',
+            },
+          ],
+        })
+      )
     }
     const preStakedApp: IPreStakedApp = await ApplicationPool.findOne({
       status: APPLICATION_STATUSES.SWAPPABLE,
@@ -202,14 +206,16 @@ router.post(
     })
 
     if (!preStakedApp) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'POOL_EMPTY',
-            message: 'No pre-staked apps available for this chain.',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'POOL_EMPTY',
+              message: 'No pre-staked apps available for this chain.',
+            },
+          ],
+        })
+      )
     }
     const application = new Application({
       chain,
@@ -242,14 +248,16 @@ router.post(
     const { ok } = await ApplicationPool.deleteOne({ _id: preStakedApp._id })
 
     if (ok !== 1) {
-      throw HttpError.INTERNAL_SERVER_ERROR({
-        errors: [
-          {
-            id: 'DB_ERROR',
-            message: 'There was an error while updating the DB',
-          },
-        ],
-      })
+      return next(
+        HttpError.INTERNAL_SERVER_ERROR({
+          errors: [
+            {
+              id: 'DB_ERROR',
+              message: 'There was an error while updating the DB',
+            },
+          ],
+        })
+      )
     }
 
     const blockchain = await Blockchains.findOne({ _id: application.chain })
@@ -293,7 +301,7 @@ router.post(
 
 router.put(
   '/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { gatewaySettings } = req.body
     const { lbId } = req.params
     const userId = (req.user as IUser)._id
@@ -301,22 +309,26 @@ router.put(
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'Application does not belong to user',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'Application does not belong to user',
+            },
+          ],
+        })
+      )
     }
 
     const existingKeys = await Promise.all(
@@ -357,28 +369,32 @@ router.put(
 
 router.get(
   '/status/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'Application does not belong to user',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'Application does not belong to user',
+            },
+          ],
+        })
+      )
     }
 
     const apps = await Promise.all(
@@ -397,14 +413,16 @@ router.get(
     )
 
     if (!isAppResponseOk) {
-      throw HttpError.INTERNAL_SERVER_ERROR({
-        errors: [
-          {
-            id: 'POCKET_JS_ERROR',
-            message: 'Application could not be fetched.',
-          },
-        ],
-      })
+      return next(
+        HttpError.INTERNAL_SERVER_ERROR({
+          errors: [
+            {
+              id: 'POCKET_JS_ERROR',
+              message: 'Application could not be fetched.',
+            },
+          ],
+        })
+      )
     }
 
     const readableApps = apps.map((app: QueryAppResponse) => app.toJSON())
@@ -428,29 +446,33 @@ router.get(
 
 router.put(
   '/notifications/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
     const { quarter, half, threeQuarters, full } = req.body
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'Application does not belong to user',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'Application does not belong to user',
+            },
+          ],
+        })
+      )
     }
     const emailService = new MailgunService()
     const hasOptedOut = !(quarter || half || threeQuarters || full)
@@ -488,7 +510,7 @@ router.put(
 
 router.post(
   '/switch/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { chain } = req.body
     const { lbId } = req.params
@@ -500,33 +522,39 @@ router.post(
     })
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'Application does not belong to user',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'Application does not belong to user',
+            },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.applicationIDs.length > appsInPool.length) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'TOO_MANY_APPS',
-            message: 'Too many applications in Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'TOO_MANY_APPS',
+              message: 'Too many applications in Load Balancer',
+            },
+          ],
+        })
+      )
     }
 
     const newApps = await Promise.all(
@@ -546,14 +574,9 @@ router.post(
         if (
           oldApplication.user.toString() !== (req.user as IUser)._id.toString()
         ) {
-          throw HttpError.FORBIDDEN({
-            errors: [
-              {
-                id: 'FOREIGN_APPLICATION',
-                message: 'Application does not belong to user',
-              },
-            ],
-          })
+          throw new Error(
+            'One of the applications in the LB does not belong to the user'
+          )
         }
 
         oldApplication.status = APPLICATION_STATUSES.AWAITING_GRACE_PERIOD
@@ -614,28 +637,32 @@ router.post(
 
 router.post(
   '/remove/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            { id: 'NONEXISTENT_APPLICATION', message: 'Application not found' },
+          ],
+        })
+      )
     }
 
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'Application does not belong to user',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'Application does not belong to user',
+            },
+          ],
+        })
+      )
     }
 
     await Promise.all(
@@ -666,31 +693,35 @@ router.post(
 
 router.get(
   '/total-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -730,31 +761,35 @@ router.get(
 
 router.get(
   '/successful-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -793,31 +828,35 @@ router.get(
 
 router.get(
   '/daily-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
     const cachedMetricResponse = await getResponseFromCache(
       `${lbId}-daily-relays`
@@ -864,31 +903,35 @@ router.get(
 
 router.get(
   '/session-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const appIds = loadBalancer.applicationIDs
@@ -910,31 +953,35 @@ router.get(
 
 router.get(
   '/ranged-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -973,31 +1020,35 @@ router.get(
 
 router.get(
   '/previous-successful-relays/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -1036,31 +1087,35 @@ router.get(
 
 router.get(
   '/hourly-latency/:lbId',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -1106,31 +1161,35 @@ router.get(
 
 router.get(
   '/origin-classification/:lbID',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbID } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbID)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const cachedMetricResponse = await getResponseFromCache(
@@ -1187,31 +1246,35 @@ router.get(
 
 router.get(
   '/error-metrics/:lbID',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbID } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbID)
 
     if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.BAD_REQUEST({
+          errors: [
+            {
+              id: 'NONEXISTENT_LOADBALANCER',
+              message: 'User does not have an active Load Balancer',
+            },
+          ],
+        })
+      )
     }
     if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
+      return next(
+        HttpError.FORBIDDEN({
+          errors: [
+            {
+              id: 'UNAUTHORIZED_ACCESS',
+              message: 'User does not have access to this load balancer',
+            },
+          ],
+        })
+      )
     }
 
     const appIds = loadBalancer.applicationIDs
