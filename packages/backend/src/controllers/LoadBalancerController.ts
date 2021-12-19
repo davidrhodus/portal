@@ -18,7 +18,6 @@ import {
   influx,
   buildDailyAppRelaysQuery,
   buildHourlyLatencyQuery,
-  buildLatestFilteredQueries,
   buildSessionRelaysQuery,
   buildSuccessfulAppRelaysQuery,
   buildTotalAppRelaysQuery,
@@ -89,15 +88,13 @@ router.get(
       })
     }
 
-    console.log(`found ${lbs.length} lbs for user ${id.toString()}`)
-
     // Process all the LBs to "clean them up" for the interface.
     const processedLbs = await Promise.all(
       lbs.map(async (lb) => {
         if (!lb.applicationIDs.length) {
           // Remove user association with empty LBs. This means their apps have no usage and have been removed, so this LB should be removed (and will be done so automatically after some time).
           lb.user = null
-
+          console.log('hay bobo?')
           return
         }
 
@@ -907,63 +904,6 @@ router.get(
 
     res.status(200).send({
       session_relays: _value,
-    })
-  })
-)
-
-router.post(
-  '/latest-relays',
-  asyncMiddleware(async (req: Request, res: Response) => {
-    const userId = (req.user as IUser)._id
-    const { id } = req.body
-
-    const loadBalancer: ILoadBalancer = await LoadBalancer.findById(id)
-
-    if (!loadBalancer) {
-      throw HttpError.BAD_REQUEST({
-        errors: [
-          {
-            id: 'NONEXISTENT_LOADBALANCER',
-            message: 'User does not have an active Load Balancer',
-          },
-        ],
-      })
-    }
-    if (loadBalancer.user.toString() !== userId.toString()) {
-      throw HttpError.FORBIDDEN({
-        errors: [
-          {
-            id: 'UNAUTHORIZED_ACCESS',
-            message: 'User does not have access to this load balancer',
-          },
-        ],
-      })
-    }
-
-    const appIds = loadBalancer.applicationIDs
-    const publicKeys = await getLBPublicKeys(appIds, id)
-
-    const rawLatestRelays = await influx.collectRows(
-      buildLatestFilteredQueries({
-        publicKeys,
-        start: '-1h',
-        stop: '-0h',
-      })
-    )
-
-    const processedLatestRelays = rawLatestRelays.map(
-      ({ method, bytes_200, bytes_500, elapsedTime_200, elapsedTime_500 }) => {
-        return {
-          method,
-          bytes: bytes_200 ?? bytes_500 ?? 0,
-          result: bytes_200 ? '200' : '500',
-          elapsedTime: elapsedTime_200 ?? elapsedTime_500 ?? 0,
-        }
-      }
-    )
-
-    res.status(200).send({
-      session_relays: processedLatestRelays,
     })
   })
 )

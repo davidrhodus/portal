@@ -77,6 +77,8 @@ export function useUserApplications(): {
           ...rest,
         })) as ILBInfo[]
 
+        console.log(lbData, userLbs)
+
         return [...userLbs]
       } catch (err) {
         if (sentryEnabled) {
