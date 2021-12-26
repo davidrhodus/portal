@@ -1,8 +1,6 @@
 import { IChain } from './types'
 
-export type ChainsResponse = {
-  chains: IChain[]
-}
+export type ChainsResponse = IChain[]
 
 export type NetworkSummaryResponse = {
   appsStaked: number

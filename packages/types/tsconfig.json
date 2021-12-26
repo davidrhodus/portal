@@ -1,5 +1,7 @@
 {
+  "extends": "../../tsconfig.json",
    "compilerOptions": {
+    "composite": true,
     "target": "esnext",
     "module": "commonjs",
     "pretty": true,
@@ -19,6 +21,7 @@
     "declarationMap": true,
     "incremental": true,
     "preserveWatchOutput": true,
+    "rootDir": "src",
     "outDir": "./lib"
   },
   "include": ["src"],
