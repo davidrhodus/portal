@@ -159,7 +159,7 @@ router.post(
       if (err) {
         return next(err)
       }
-      if (!user) {
+     if (!user) {
         return next(
           HttpError.INTERNAL_SERVER_ERROR({
             errors: [
@@ -235,7 +235,7 @@ router.post(
 
 router.post(
   '/send-reset-email',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { email } = req.body
     const processedEmail = email
     const user: IUser = await User.findOne({ email: processedEmail })
@@ -285,7 +285,7 @@ router.post(
 
 router.post(
   '/reset-password',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { plainToken, password1, password2, email } = req.body
 
     if (!plainToken || !password1 || !password2 || !email) {
@@ -365,7 +365,7 @@ router.post(
 
 router.post(
   '/validate-user',
-  asyncMiddleware(async (req: Request, res: Response) => {
+  asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { plainToken, email } = req.body
 
     const user = await User.findOne({ email })

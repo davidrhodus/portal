@@ -1,5 +1,18 @@
 import express, { Response, Request, NextFunction } from 'express'
 import crypto from 'crypto'
+import {
+  UserLBDailyRelaysResponse,
+  UserLBErrorMetricsResponse,
+  UserLBHistoricalLatencyResponse,
+  UserLBHistoricalOriginFrequencyResponse,
+  UserLBLatencyBucket,
+  UserLBOnChainDataResponse,
+  UserLBPreviousTotalRelaysResponse,
+  UserLBPreviousTotalSuccessfulRelaysResponse,
+  UserLBSessionRelaysResponse,
+  UserLBTotalRelaysResponse,
+  UserLBTotalSuccessfulRelaysResponse
+}from '@pokt-foundation/portal-types'
 import { typeGuard, QueryAppResponse } from '@pokt-network/pocket-js'
 import { IAppInfo, GetApplicationQuery } from './types'
 import { cache, getResponseFromCache, LB_METRICS_TTL } from '../redis'
@@ -438,7 +451,7 @@ router.get(
         stake: 0,
         relays: 0,
       }
-    )
+    ) as UserLBOnChainDataResponse
 
     res.status(200).send(appsStatus)
   })
@@ -746,7 +759,7 @@ router.get(
 
     const processedRelaysAndLatency = {
       total_relays: _value || 0,
-    }
+    } as UserLBTotalRelaysResponse
 
     await cache.set(
       `${lbId}-total-relays`,
@@ -812,8 +825,8 @@ router.get(
     )
 
     const processedSuccessfulRelays = {
-      total_relays: _value || 0,
-    }
+      successful_relays: _value || 0,
+    } as UserLBTotalSuccessfulRelaysResponse
 
     await cache.set(
       `${lbId}-successful-relays`,
@@ -881,14 +894,14 @@ router.get(
       ({ _value }: { _value: number; _time: string }, i) => {
         return {
           bucket: composeDaysFromNowUtcDate(7 - i),
-          dailyRelays: _value ?? 0,
+          daily_relays: _value ?? 0,
         }
       }
     )
 
     const processedDailyRelaysResponse = {
       daily_relays: processedDailyRelays,
-    }
+    } as UserLBDailyRelaysResponse
 
     await cache.set(
       `${lbId}-daily-relays`,
@@ -947,12 +960,12 @@ router.get(
 
     res.status(200).send({
       session_relays: _value,
-    })
+    } as UserLBSessionRelaysResponse)
   })
 )
 
 router.get(
-  '/ranged-relays/:lbId',
+  '/previous-total-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const userId = (req.user as IUser)._id
     const { lbId } = req.params
@@ -985,7 +998,7 @@ router.get(
     }
 
     const cachedMetricResponse = await getResponseFromCache(
-      `${lbId}-ranged-relays`
+      `${lbId}-previous-total-relays`
     )
 
     if (cachedMetricResponse) {
@@ -1005,10 +1018,10 @@ router.get(
 
     const processedTotalRangedRelays = {
       total_relays: _value || 0,
-    }
+    } as UserLBPreviousTotalRelaysResponse
 
     await cache.set(
-      `${lbId}-ranged-relays`,
+      `${lbId}-previous-total-relays`,
       JSON.stringify(processedTotalRangedRelays),
       'EX',
       LB_METRICS_TTL
@@ -1072,7 +1085,7 @@ router.get(
 
     const processedPreviousSuccessfulRelaysResponse = {
       successful_relays: _value,
-    }
+    } as UserLBPreviousTotalSuccessfulRelaysResponse
 
     await cache.set(
       `${lbId}-previous-successful-relays`,
@@ -1139,14 +1152,14 @@ router.get(
 
     const processedHourlyLatency = rawHourlyLatency.map(
       ({ _value, _time }) => ({ bucket: _time, latency: _value ?? 0 })
-    )
+    ) as UserLBLatencyBucket[]
 
     const processedHourlyLatencyResponse = {
       hourly_latency: processedHourlyLatency.slice(
         processedHourlyLatency.length - 24,
         processedHourlyLatency.length
       ),
-    }
+    } as UserLBHistoricalLatencyResponse
 
     await cache.set(
       `${lbId}-hourly-latency`,
@@ -1231,7 +1244,7 @@ router.get(
       origin_classification: processedOriginClassification.sort(
         (a, b) => b.count - a.count
       ),
-    }
+    } as UserLBHistoricalOriginFrequencyResponse
 
     await cache.set(
       `${lbID}-origin-classification`,
@@ -1288,7 +1301,7 @@ router.get(
 
     const { data: metrics } = await axios.get(metricsURL)
 
-    res.status(200).send(metrics)
+    res.status(200).send(metrics as UserLBErrorMetricsResponse)
   })
 )
 
