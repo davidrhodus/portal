@@ -36,7 +36,6 @@ export function useNetworkSummary(): {
     async function getNetworkSummary() {
       const path = `${env('BACKEND_URL')}/api/network/summary`
 
-      console.log(token)
       try {
         const { data } = await axios.get(path, {
           headers: {

@@ -11,14 +11,13 @@ import {
   UserLBPreviousTotalSuccessfulRelaysResponse,
   UserLBSessionRelaysResponse,
   UserLBTotalRelaysResponse,
-  UserLBTotalSuccessfulRelaysResponse
-}from '@pokt-foundation/portal-types'
+  UserLBTotalSuccessfulRelaysResponse,
+} from '@pokt-foundation/portal-types'
 import { typeGuard, QueryAppResponse } from '@pokt-network/pocket-js'
 import { IAppInfo, GetApplicationQuery } from './types'
 import { cache, getResponseFromCache, LB_METRICS_TTL } from '../redis'
 import env from '../environment'
 import asyncMiddleware from '../middlewares/async'
-import { authenticate } from '../middlewares/passport-auth'
 import Application, { IApplication } from '../models/Application'
 import ApplicationPool, { IPreStakedApp } from '../models/PreStakedApp'
 import LoadBalancer, { ILoadBalancer } from '../models/LoadBalancer'
@@ -37,6 +36,7 @@ import {
   buildOriginClassificationQuery,
 } from '../lib/influx'
 import { getApp } from '../lib/pocket'
+import { checkJWT } from '../lib/oauth'
 import HttpError from '../errors/http-error'
 import MailgunService from '../services/MailgunService'
 import { APPLICATION_STATUSES } from '../application-statuses'
@@ -80,12 +80,13 @@ async function getLBPublicKeys(appIDs: string[], lbID: string) {
 
 const router = express.Router()
 
-router.use(authenticate)
+router.use(checkJWT)
 
 router.get(
   '',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const id = (req.user as IUser)._id
+    console.log(req.user)
+    const id = req.user.sub
     const lbs = await LoadBalancer.find({
       user: id,
     })
@@ -194,7 +195,7 @@ router.post(
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { name, chain, gatewaySettings = DEFAULT_GATEWAY_SETTINGS } = req.body
 
-    const id = (req.user as IUser)._id
+    const id = req.user.sub
     const userLBs = await LoadBalancer.find({ user: id })
 
     const isNewAppRequestInvalid =
@@ -317,7 +318,7 @@ router.put(
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
     const { gatewaySettings } = req.body
     const { lbId } = req.params
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
@@ -383,7 +384,7 @@ router.put(
 router.get(
   '/status/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
@@ -460,7 +461,7 @@ router.get(
 router.put(
   '/notifications/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
     const { quarter, half, threeQuarters, full } = req.body
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -512,10 +513,11 @@ router.put(
 
     await loadBalancer.save()
 
-    emailService.send({
-      templateName: 'NotificationChange',
-      toEmail: (req.user as IUser).email,
-    })
+    // TODO: Get email in auth0 user object
+    //emailService.send({
+    //templateName: 'NotificationChange',
+    //toEmail: (req.user as IUser).email,
+    //})
 
     return res.status(204).send()
   })
@@ -524,7 +526,7 @@ router.put(
 router.post(
   '/switch/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { chain } = req.body
     const { lbId } = req.params
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -584,9 +586,7 @@ router.post(
         if (!oldApplication) {
           throw new Error('Cannot find application')
         }
-        if (
-          oldApplication.user.toString() !== (req.user as IUser)._id.toString()
-        ) {
+        if (oldApplication.user.toString() !== req.user.sub.toString()) {
           throw new Error(
             'One of the applications in the LB does not belong to the user'
           )
@@ -651,7 +651,7 @@ router.post(
 router.post(
   '/remove/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
 
@@ -707,7 +707,7 @@ router.post(
 router.get(
   '/total-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -775,7 +775,7 @@ router.get(
 router.get(
   '/successful-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -842,7 +842,7 @@ router.get(
 router.get(
   '/daily-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -917,7 +917,7 @@ router.get(
 router.get(
   '/session-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -967,7 +967,7 @@ router.get(
 router.get(
   '/previous-total-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -1034,7 +1034,7 @@ router.get(
 router.get(
   '/previous-successful-relays/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -1101,7 +1101,7 @@ router.get(
 router.get(
   '/hourly-latency/:lbId',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbId } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbId)
@@ -1175,7 +1175,7 @@ router.get(
 router.get(
   '/origin-classification/:lbID',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbID } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbID)
@@ -1260,7 +1260,7 @@ router.get(
 router.get(
   '/error-metrics/:lbID',
   asyncMiddleware(async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req.user as IUser)._id
+    const userId = req.user.sub
     const { lbID } = req.params
 
     const loadBalancer: ILoadBalancer = await LoadBalancer.findById(lbID)

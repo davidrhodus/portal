@@ -14,7 +14,7 @@ interface INotificationSettings {
 }
 
 export interface ILoadBalancer extends Document {
-  user: Types.ObjectId
+  user: string | Types.ObjectId
   name: string
   requestTimeOut: string
   applicationIDs: string[]
@@ -26,7 +26,7 @@ export interface ILoadBalancer extends Document {
 
 const LoadBalancerSchema = new Schema<ILoadBalancer>(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User' },
+    user: String,
     name: String,
     requestTimeOut: String,
     applicationIDs: [],

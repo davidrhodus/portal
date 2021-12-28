@@ -12,7 +12,6 @@ import Chain from '../models/Blockchains'
 import NetworkData from '../models/NetworkData'
 import ApplicationPool from '../models/PreStakedApp'
 import asyncMiddleware from '../middlewares/async'
-import { authenticate } from '../middlewares/passport-auth'
 import { composeDaysFromNowUtcDate } from '../lib/date-utils'
 import {
   buildSuccessfulNetworkRelaysQuery,
@@ -32,7 +31,7 @@ router.use(checkJWT)
 router.get(
   '/chains',
   asyncMiddleware(async (r: Request, res: Response) => {
-    console.log(r.user.sub)
+    console.log(r.user)
     const chains = await Chain.find()
 
     const processedChains = (await Promise.all(
