@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { format } from 'd3-format'
 import { useViewport } from 'use-viewport'
 import 'styled-components/macro'
+import { useAuth0 } from '@auth0/auth0-react'
 import {
   ButtonBase,
   CircleGraph,
@@ -82,12 +83,13 @@ function formatDailyRelaysForGraphing(dailyRelays: DailyRelayBucket[] = []): {
 }
 
 export default function NetworkStatus() {
+  const { isSummaryLoading, summaryData } = useNetworkSummary()
   const { isNetworkStatsLoading, networkStats } = useNetworkStats()
   const { isRelaysError, isRelaysLoading, relayData } = useTotalWeeklyRelays()
-  const { isSummaryLoading, summaryData } = useNetworkSummary()
   const { isChainsLoading, chains } = useChains()
   const theme = useTheme()
   const { within } = useViewport()
+  const { user } = useAuth0()
   const compactMode = within(-1, 'medium')
 
   const {

@@ -3,6 +3,7 @@ import { Link as RouterLink, useHistory } from 'react-router-dom'
 import { useMutation } from 'react-query'
 import axios from 'axios'
 import 'styled-components/macro'
+import { useAuth0 } from '@auth0/auth0-react'
 import {
   Button,
   Field,
@@ -16,39 +17,48 @@ import {
 import Onboarding from '../../components/Onboarding/Onboarding'
 import env from '../../environment'
 
+//async function login(e) {
+//try {
+//const path = `${env('BACKEND_URL')}/api/users/login`
+//const res = await axios.post(
+//path,
+//{
+//email,
+//password,
+//},
+//{
+//withCredentials: true,
+//}
+//)
+
+//if (res.status === 200 || res.status === 204) {
+//history.push({
+//pathname: '/home',
+//})
+//}
+//} catch (err) {
+//const { errors = [] } = err?.response?.data
+
+//setErrors(() => [...errors])
+//}
+//}
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState(null)
   const [password, setPassword] = useState('')
   const [passwordError, setPasswordError] = useState(null)
   const [errors, setErrors] = useState([])
+  const { user, isAuthenticated, loginWithRedirect } = useAuth0()
   const history = useHistory()
 
   const { isLoading, mutate } = useMutation(async function login(e) {
-    try {
-      const path = `${env('BACKEND_URL')}/api/users/login`
-      const res = await axios.post(
-        path,
-        {
-          email,
-          password,
-        },
-        {
-          withCredentials: true,
-        }
-      )
-
-      if (res.status === 200 || res.status === 204) {
-        history.push({
-          pathname: '/home',
-        })
-      }
-    } catch (err) {
-      const { errors = [] } = err?.response?.data
-
-      setErrors(() => [...errors])
-    }
+    await loginWithRedirect()
   })
+
+  React.useEffect(() => {
+    console.log(user, isAuthenticated)
+  }, [user, isAuthenticated])
 
   const onEmailChange = useCallback((e) => setEmail(e.target.value), [])
   const onPasswordChange = useCallback((e) => setPassword(e.target.value), [])

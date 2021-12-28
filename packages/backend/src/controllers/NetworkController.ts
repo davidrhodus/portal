@@ -20,20 +20,22 @@ import {
   NETWORK_AGGREGATES_QUERY,
 } from '../lib/influx'
 import { cache, getResponseFromCache, NETWORK_METRICS_TTL } from '../redis'
+import { checkJWT } from '../lib/oauth'
 
 const router = express.Router()
 
-router.use(authenticate)
+router.use(checkJWT)
 
 /**
  * Get info for all chains.
  */
 router.get(
   '/chains',
-  asyncMiddleware(async (_: Request, res: Response) => {
+  asyncMiddleware(async (r: Request, res: Response) => {
+    console.log(r.user.sub)
     const chains = await Chain.find()
 
-    const processedChains = await Promise.all(
+    const processedChains = (await Promise.all(
       chains.map(async function processChain({
         _id,
         ticker,
@@ -53,7 +55,7 @@ router.get(
           isAvailableForStaking,
         }
       })
-    ) as ChainsResponse
+    )) as ChainsResponse
 
     res.status(200).send(processedChains)
   })
@@ -129,7 +131,11 @@ router.get(
     )
 
     const processedDailyRelaysResponse = rawDailyRelays.map(
-      ({ _time, _value }) => ({ total_relays: _value ?? 0, bucket: _time }) as NetworkDailyRelayBucket
+      ({ _time, _value }) =>
+        ({
+          total_relays: _value ?? 0,
+          bucket: _time,
+        } as NetworkDailyRelayBucket)
     ) as NetworkDailyRelaysResponse
 
     await cache.set(

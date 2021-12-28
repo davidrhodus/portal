@@ -7,12 +7,8 @@ import ApplicationDetail from './Dashboard/ApplicationDetail/ApplicationDetail'
 import Create from './Dashboard/Create/Create'
 import Dashboard from './Dashboard/Dashboard'
 import Fallback from './Fallback'
-import ForgotPassword from './Onboarding/ForgotPassword'
 import Login from './Onboarding/Login'
 import NetworkStatus from './Dashboard/Network/NetworkStatus'
-import NewPassword from './Onboarding/NewPassword'
-import Signup from './Onboarding/Signup'
-import Validate from './Onboarding/Validate'
 
 export default function DashboardRoutes() {
   const { within } = useViewport()
@@ -46,21 +42,6 @@ export default function DashboardRoutes() {
         <Switch>
           <Route exact path={`/`}>
             <Login />
-          </Route>
-          <Route exact path={`/signup`}>
-            <Signup />
-          </Route>
-          <Route exact path={`/login`}>
-            <Login />
-          </Route>
-          <Route exact path={`/validate`}>
-            <Validate />
-          </Route>
-          <Route exact path={`/forgotpassword`}>
-            <ForgotPassword />
-          </Route>
-          <Route exact path={`/newpassword`}>
-            <NewPassword />
           </Route>
           <Dashboard>
             <Route exact path={`/home`}>

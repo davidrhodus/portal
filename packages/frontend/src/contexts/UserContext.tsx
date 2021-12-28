@@ -1,6 +1,7 @@
 import React, { useContext, useMemo } from 'react'
 import { useQuery } from 'react-query'
 import axios from 'axios'
+import { useAuth0 } from '@auth0/auth0-react'
 import env from '../environment'
 import { KNOWN_QUERY_SUFFIXES } from '../known-query-suffixes'
 
@@ -8,11 +9,13 @@ type UserInfo = {
   userLoading: boolean
   email: string | undefined
   id: string | undefined
+  token: string
 }
 
 const DEFAULT_USER_STATE = {
   userLoading: true,
   email: '',
+  token: '',
   id: '',
 }
 
@@ -29,16 +32,30 @@ export function useUser(): UserInfo {
 }
 
 function useUserData() {
+  const { getAccessTokenSilently, getAccessTokenWithPopup } = useAuth0()
+
   const { data, isLoading, isError } = useQuery(
     [KNOWN_QUERY_SUFFIXES.USER_CONTEXT],
     async function getUserContext() {
-      const path = `${env('BACKEND_URL')}/api/users/user`
+      let token = ''
 
-      const { data } = await axios.get(path, {
-        withCredentials: true,
-      })
+      try {
+        token = await getAccessTokenSilently()
+      } catch (e) {
+        token = await getAccessTokenWithPopup()
+      } finally {
+        const path = `${env('BACKEND_URL')}/api/users/user`
 
-      return data as { email: string | undefined; id: string | undefined }
+        const { data } = await axios.get(path, {
+          withCredentials: true,
+        })
+
+        return { email: data.email, id: data.id, token } as {
+          email: string | undefined
+          id: string | undefined
+          token: string
+        }
+      }
     }
   )
 
@@ -61,6 +78,7 @@ export function UserContextProvider({
       return {
         email: '',
         id: '',
+        token: '',
         userLoading: true,
       } as UserInfo
     }
