@@ -2,7 +2,6 @@ import express from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import morgan from 'morgan'
-import passport from 'passport'
 import env from './environment'
 import { errorHandler } from './helpers/utils'
 import notFoundMiddleware from './middlewares/not-found'
@@ -34,8 +33,6 @@ app.use(
     exposedHeaders: ['Authorization'],
   })
 )
-
-passport.initialize()
 
 configureRoutes(app)
 app.use(notFoundMiddleware())

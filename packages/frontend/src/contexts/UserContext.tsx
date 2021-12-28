@@ -44,13 +44,7 @@ function useUserData() {
       } catch (e) {
         token = await getAccessTokenWithPopup()
       } finally {
-        const path = `${env('BACKEND_URL')}/api/users/user`
-
-        const { data } = await axios.get(path, {
-          withCredentials: true,
-        })
-
-        return { email: data.email, id: data.id, token } as {
+        return { email: '', id: '', token } as {
           email: string | undefined
           id: string | undefined
           token: string
