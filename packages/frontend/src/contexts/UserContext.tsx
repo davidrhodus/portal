@@ -1,8 +1,6 @@
 import React, { useContext, useMemo } from 'react'
 import { useQuery } from 'react-query'
-import axios from 'axios'
 import { useAuth0 } from '@auth0/auth0-react'
-import env from '../environment'
 import { KNOWN_QUERY_SUFFIXES } from '../known-query-suffixes'
 
 type UserInfo = {
