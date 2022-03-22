@@ -13,14 +13,16 @@ import NetworkData from '../models/NetworkData'
 import ApplicationPool from '../models/PreStakedApp'
 import asyncMiddleware from '../middlewares/async'
 import { authenticate } from '../middlewares/passport-auth'
-import { composeDaysFromNowUtcDate } from '../lib/date-utils'
+import { composeDaysFromNowUtcDate, composeHoursFromNowUtcDate } from '../lib/date-utils'
 import {
+  buildSuccessfulBlockNetworkRelaysQuery,
   buildSuccessfulNetworkRelaysQuery,
   influx,
   NETWORK_AGGREGATES_QUERY,
 } from '../lib/influx'
 import { cache, getResponseFromCache, NETWORK_METRICS_TTL } from '../redis'
 import { KNOWN_CHAINS } from '../known-chains'
+import { getLatestBlock } from '../lib/pocket'
 
 const router = express.Router()
 
@@ -172,6 +174,52 @@ router.get(
     )
 
     res.status(200).send(processedAggregateStatsResponse)
+  })
+)
+
+router.get(
+  '/latest-block',
+  asyncMiddleware(async (_: Request, res: Response) => {
+    const cachedResponse = await getResponseFromCache('latest-block')
+
+    if (cachedResponse) {
+      return res.status(200).send(cachedResponse)
+    }
+
+    try {
+      const latestBlockResponse = await getLatestBlock()
+
+      const rawDailyRelays = await influx.collectRows(
+        buildSuccessfulBlockNetworkRelaysQuery({
+          start: composeHoursFromNowUtcDate(1),
+          stop: '-0h',
+        })
+      )
+
+      const processedDailyRelaysResponse = rawDailyRelays.map(
+        ({ _time, _value }) =>
+          ({
+            total_relays: _value ?? 0,
+            bucket: _time,
+          } as NetworkDailyRelayBucket)
+      ) as NetworkDailyRelaysResponse
+
+      const latestBlockWithRelays = {
+        ...latestBlockResponse,
+        processedDailyRelaysResponse,
+      }
+
+      await cache.set(
+        'latest-block',
+        JSON.stringify(latestBlockWithRelays),
+        'EX',
+        NETWORK_METRICS_TTL - 320
+      )
+      res.status(200).send(latestBlockWithRelays)
+    } catch (e) {
+      console.log(e)
+      res.status(500).send(e)
+    }
   })
 )
 

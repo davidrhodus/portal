@@ -19,6 +19,14 @@ export type NetworkRelayStats = {
   totalRelays: number
 }
 
+export type LatestBlockData = {
+  height: string
+  txsCount: string
+  producedTime: string
+  producedIn: string
+  processedDailyRelaysResponse: [{ total_relays: number; bucket: string }]
+}
+
 export function useNetworkSummary(): {
   isSummaryLoading: boolean
   isSummaryError: boolean
@@ -143,5 +151,35 @@ export function useNetworkStats(): {
     isNetworkStatsLoading,
     isNetworkStatsError,
     networkStats,
+  }
+}
+
+export function useLatestBlock(): {
+  isLatestBlockError: boolean
+  isLatestBlockLoading: boolean
+  latestBlockData: LatestBlockData
+} {
+  const {
+    isLoading: isLatestBlockLoading,
+    isError: isLatestBlockError,
+    data: latestBlockData,
+  } = useQuery('network/latest-block', async function getLatestBlock() {
+    const path = `${env('BACKEND_URL')}/api/network/latest-block`
+
+    try {
+      const { data } = await axios.get(path, {
+        withCredentials: true,
+      })
+
+      return data
+    } catch (err) {
+      return err
+    }
+  })
+
+  return {
+    isLatestBlockError,
+    isLatestBlockLoading,
+    latestBlockData,
   }
 }

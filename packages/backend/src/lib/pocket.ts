@@ -304,8 +304,10 @@ export async function createPocketAccount(): Promise<PocketAccount | Error> {
     undefined,
     POCKET_CONFIGURATION
   )
-  const generatedPassphrase = crypto.randomBytes(32).toString("hex");
-  const account = await pocketInstance.keybase.createAccount(generatedPassphrase);
+  const generatedPassphrase = crypto.randomBytes(32).toString('hex')
+  const account = await pocketInstance.keybase.createAccount(
+    generatedPassphrase
+  )
 
   if (typeGuard(account, Error)) {
     throw Error
@@ -314,7 +316,7 @@ export async function createPocketAccount(): Promise<PocketAccount | Error> {
   const exportedPrivateKey = await pocketInstance.keybase.exportAccount(
     account.addressHex,
     generatedPassphrase
-  );
+  )
 
   return {
     address: account.addressHex,
@@ -405,4 +407,52 @@ export async function submitRawTransaction(
     throw new Error(rawTxResponse.message)
   }
   return rawTxResponse.hash
+}
+
+export async function getLatestBlock() {
+  const pocketInstance = new Pocket(
+    getPocketDispatchers(),
+    undefined,
+    POCKET_CONFIGURATION
+  )
+  const pocketRpcProvider = getRPCProvider()
+  const heightResponse = await pocketInstance
+    .rpc(pocketRpcProvider)
+    .query.getHeight()
+
+  if (typeGuard(heightResponse, RpcError)) {
+    throw heightResponse
+  }
+
+  const height = heightResponse.height
+  const currentBlockResponse = await pocketInstance
+    .rpc(pocketRpcProvider)
+    .query.getBlock(height)
+
+  if (typeGuard(currentBlockResponse, RpcError)) {
+    throw currentBlockResponse
+  }
+
+  const previousBlockResponse = await pocketInstance
+    .rpc(pocketRpcProvider)
+    .query.getBlock(BigInt(Number(height) - 1))
+
+  if (typeGuard(previousBlockResponse, RpcError)) {
+    throw previousBlockResponse
+  }
+
+  const { header: currentBlockHeader } = currentBlockResponse.block
+  const { header: previousBlockHeader } = previousBlockResponse.block
+
+  return {
+    height: String(height),
+    txsCount: String(currentBlockHeader.numTXs),
+    producedTime: currentBlockHeader.time,
+    producedIn: Math.fround(
+      Math.abs(
+        Number(new Date(currentBlockHeader.time)) -
+          Number(new Date(previousBlockHeader.time))
+      ) / 60000
+    ).toFixed(1),
+  }
 }

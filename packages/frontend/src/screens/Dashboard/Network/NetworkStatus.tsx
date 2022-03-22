@@ -22,6 +22,7 @@ import { getImageForChain } from '../../../known-chains/known-chains'
 import {
   DailyRelayBucket,
   useChains,
+  useLatestBlock,
   useNetworkStats,
   useNetworkSummary,
   useTotalWeeklyRelays,
@@ -38,6 +39,7 @@ import NetworkSummaryNodesImg from '../../../assets/networkSummaryNodes.png'
 import NetworkSummaryAppsImg from '../../../assets/networkSummaryApps.png'
 import NetworkSummaryNetworksImg from '../../../assets/networkSummaryNetworks.png'
 import Card from '../../../components/Card/Card'
+import LatestBlock from '../../../components/LatestBlock/LatestBlock'
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -89,6 +91,7 @@ export default function NetworkStatus() {
   const { isRelaysError, isRelaysLoading, relayData } = useTotalWeeklyRelays()
   const { isSummaryLoading, summaryData } = useNetworkSummary()
   const { isChainsLoading, chains } = useChains()
+  const { isLatestBlockLoading, latestBlockData } = useLatestBlock()
   const theme = useTheme()
   const { within } = useViewport()
   const compactMode = within(-1, 'medium')
@@ -111,6 +114,7 @@ export default function NetworkStatus() {
       isRelaysLoading ||
       isSummaryLoading ||
       isChainsLoading ||
+      isLatestBlockLoading ||
       !networkStats,
     [
       networkStats,
@@ -118,6 +122,7 @@ export default function NetworkStatus() {
       isRelaysLoading,
       isNetworkStatsLoading,
       isSummaryLoading,
+      isLatestBlockLoading,
     ]
   )
 
@@ -382,6 +387,8 @@ export default function NetworkStatus() {
                   </div>
                   <Spacer size={1 * GU} />
                 </Box>
+                <Spacer size={4 * GU} />
+                <LatestBlock data={latestBlockData} />
                 {!compactMode && (
                   <>
                     <Spacer size={4 * GU} />
