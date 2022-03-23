@@ -16,13 +16,15 @@ import {
 } from '@pokt-foundation/ui'
 import 'styled-components/macro'
 import { useViewport } from 'use-viewport'
-import Box from '../../../../components/Box/Box'
 import {
   ChainMetadata,
   prefixFromChainId,
   CHAIN_ID_PREFIXES,
 } from '../../../../lib/chain-utils'
 import { getImageForChain } from '../../../../known-chains/known-chains'
+import Card from '../../../../components/Card/Card'
+//TODO: Replace with pocket-ui
+import TrashIcon from '../../../../assets/trash.svg'
 
 interface EndpointDetailsProps {
   appData: UserLB
@@ -47,15 +49,16 @@ function loadEndpointData(chainId: string, key: string) {
 
 function useEndpointData(appData: UserLB) {
   const { chain: chainId, id: appId } = appData
+  const appChain = localStorage.getItem(`${appId}_APP_CHAIN`) ?? ''
   const [selectedChains, setSelectedChains] = useState<Array<string>>([
-    chainId || '0021',
+    chainId || appChain || '0021',
   ])
 
   const LS_KEY = `${UpdateTypes.SelectedChains}-${appId}`
 
   useEffect(() => {
-    setSelectedChains(loadEndpointData(chainId, LS_KEY))
-  }, [chainId, LS_KEY])
+    setSelectedChains(loadEndpointData(chainId ? chainId : appChain, LS_KEY))
+  }, [chainId, LS_KEY, appChain])
 
   const updateSelectedChains = useCallback(
     (chainID) => {
@@ -110,18 +113,18 @@ export default function EndpointDetails({ appData }: EndpointDetailsProps) {
     useEndpointData(appData)
 
   return (
-    <Box>
+    <>
       <div
         css={`
           width: 100%;
           display: flex;
           justify-content: space-between;
-          align-items: center;
+          position: relative;
         `}
       >
         <h3
           css={`
-            ${textStyle('title2')}
+            ${textStyle('title3')}
             margin-bottom: ${3 * GU}px;
           `}
         >
@@ -130,29 +133,42 @@ export default function EndpointDetails({ appData }: EndpointDetailsProps) {
         <div
           css={`
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            margin-bottom: ${3 * GU}px;
           `}
         >
-          {gigastake ? (
-            <ChainDropdown updateSelectedChains={updateSelectedChains} />
-          ) : (
-            <LegacyChainName chainId={selectedChains[0]} />
-          )}
+          <div
+            css={`
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              margin-bottom: ${3 * GU}px;
+            `}
+          >
+            {gigastake ? (
+              <ChainDropdown updateSelectedChains={updateSelectedChains} />
+            ) : (
+              <LegacyChainName chainId={selectedChains[0]} />
+            )}
+          </div>
         </div>
       </div>
-
-      {selectedChains.map((chain) => (
-        <EndpointUrl
-          appId={appId}
-          chainId={chain}
-          gigastake={gigastake}
-          removeSelectedChain={removeSelectedChain}
-          key={chain}
-        />
-      ))}
-    </Box>
+      <Card
+        css={`
+          padding: ${GU * 3}px;
+        `}
+      >
+        {selectedChains.map((chain) => (
+          <EndpointUrl
+            appId={appId}
+            chainId={chain}
+            gigastake={gigastake}
+            removeSelectedChain={removeSelectedChain}
+            key={chain}
+          />
+        ))}
+      </Card>
+    </>
   )
 }
 
@@ -232,15 +248,16 @@ function EndpointUrl({
         onMouseLeave={handleChainOnMouseLeave}
         css={`
           width: ${8 * 10}px;
-          height: ${GU * 4}px;
+          height: ${GU * 5}px;
           text-overflow: ellipsis;
-          overflow: auto;
-          border-radius: 0;
+          overflow: hidden;
+          border-radius: ${GU - 4}px;
           font-size: ${GU + 4}px;
           padding: 0;
-          white-space: break-spaces;
+          white-space: nowrap;
           border: 1px solid ${theme.contentBorder};
           text-transform: uppercase;
+          display: inline-block;
 
           &:hover {
             background: ${theme.negative};
@@ -257,15 +274,17 @@ function EndpointUrl({
               width: ${GU * 2}px;
               height: ${GU * 2}px;
               margin-right: ${GU}px;
+              vertical-align: middle;
             `}
           />
         )}
         {isBtnHovered ? (
-          <div
+          <img
+            src={TrashIcon}
+            alt={abbrv}
             css={`
-              width: ${GU + 4}px;
-              height: 2px;
-              background-color: ${theme.content};
+              width: ${GU * 3}px;
+              height: ${GU * 3}px;
             `}
           />
         ) : (
@@ -321,6 +340,7 @@ function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
 
     if (searchedChain.length === 0) {
       setChains(NORMALIZED_CHAIN_ID_PREFIXES)
+      return
     }
 
     const tempChains = []
@@ -344,7 +364,7 @@ function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
         css={`
           border: 1px solid ${theme.accentAlternative};
           border-radius: ${GU - 4}px;
-          width: ${4 * GU}px;
+          width: ${14 * GU}px;
           height: ${4 * GU}px;
           display: flex;
           justify-content: center;
@@ -352,10 +372,12 @@ function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
           color: white;
         `}
       >
+        Add new
         <IconPlus
           css={`
             width: ${GU * 2}px;
             height: ${GU * 2}px;
+            margin-left: ${GU + 6}px;
           `}
         />
       </ButtonBase>
@@ -371,7 +393,12 @@ function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
             css={`
               position: absolute;
               z-index: 9999;
-              right: 20px;
+              right: 0;
+
+              ul {
+                height: ${GU * 31}px;
+                max-height: ${GU * 31}px;
+              }
 
               *::-webkit-scrollbar {
                 width: ${GU - 3}px !important;
