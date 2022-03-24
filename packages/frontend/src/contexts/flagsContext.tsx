@@ -1,33 +1,25 @@
 import React, { useState } from 'react'
+import flags from '../utils/flags.json'
 
 const FlagContext = React.createContext({})
 
-const FlagContextProvider = ({ 
-    children 
-        }: {
-    children: React.ReactNode
-    }) => {
+const FlagContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [hookState, setHookState] = useState({
-    authHeaders: 
-        sessionStorage.getItem('useAuth0') === 'true' ? 
-            {headers: {Authorization: `Bearer ${sessionStorage.getItem('AuthToken')}`}} :
-            {withCredentials: true},
-    useAuth0: sessionStorage.getItem('useAuth0') === 'true',
-    flags: true
-}) 
+    flags: flags,
+  })
 
-const updateHookState = (key: string, value: string) => {
-  setHookState(prevState => ({
-    ...prevState,
-    [key]: value
-  }))
-}
+  const updateHookState = (key: string, value: string) => {
+    setHookState((prevState) => ({
+      ...prevState,
+      [key]: value,
+    }))
+  }
 
-return (
-  <FlagContext.Provider value={{ hookState, updateHookState }}>
-    {children}
-  </FlagContext.Provider>
-)
+  return (
+    <FlagContext.Provider value={{ hookState, updateHookState }}>
+      {children}
+    </FlagContext.Provider>
+  )
 }
 
 export { FlagContext, FlagContextProvider }
