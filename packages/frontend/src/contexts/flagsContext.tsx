@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import flags from '../utils/flags.json'
+
+import flags from '../utils/flags'
 
 const FlagContext = React.createContext({})
 
