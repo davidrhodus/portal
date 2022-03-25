@@ -25,6 +25,8 @@ import { getImageForChain } from '../../../../known-chains/known-chains'
 import Card from '../../../../components/Card/Card'
 //TODO: Replace with pocket-ui
 import TrashIcon from '../../../../assets/trash.svg'
+import EditIcon from '../../../../assets/edit.svg'
+import MessagePopup from '../../../../components/MessagePopup/MessagePopup'
 
 interface EndpointDetailsProps {
   appData: UserLB
@@ -111,6 +113,12 @@ export default function EndpointDetails({ appData }: EndpointDetailsProps) {
   const { id: appId, gigastake } = appData
   const { removeSelectedChain, updateSelectedChains, selectedChains } =
     useEndpointData(appData)
+  const [editMode, setEditMode] = useState<boolean>(false)
+
+  const toggleEditMode = useCallback(
+    () => setEditMode((prevEditMode) => !prevEditMode),
+    []
+  )
 
   return (
     <>
@@ -146,7 +154,11 @@ export default function EndpointDetails({ appData }: EndpointDetailsProps) {
             `}
           >
             {gigastake ? (
-              <ChainDropdown updateSelectedChains={updateSelectedChains} />
+              <ChainDropdown
+                updateSelectedChains={updateSelectedChains}
+                editMode={editMode}
+                toggleEditMode={toggleEditMode}
+              />
             ) : (
               <LegacyChainName chainId={selectedChains[0]} />
             )}
@@ -165,6 +177,7 @@ export default function EndpointDetails({ appData }: EndpointDetailsProps) {
             gigastake={gigastake}
             removeSelectedChain={removeSelectedChain}
             key={chain}
+            editMode={editMode}
           />
         ))}
       </Card>
@@ -208,6 +221,7 @@ interface EndpointUrlProps {
   chainId: string
   gigastake: boolean
   removeSelectedChain: (chainID: string) => void
+  editMode: boolean
 }
 
 function EndpointUrl({
@@ -215,8 +229,8 @@ function EndpointUrl({
   chainId,
   gigastake,
   removeSelectedChain,
+  editMode,
 }: EndpointUrlProps) {
-  const [isBtnHovered, setIsBtnHovered] = useState<boolean>(false)
   const toast = useToast()
   const theme = useTheme()
   const { prefix, abbrv, name } = prefixFromChainId(chainId) as ChainMetadata
@@ -229,9 +243,6 @@ function EndpointUrl({
     [appId, prefix]
   )
 
-  const handleChainOnMouseEnter = useCallback(() => setIsBtnHovered(true), [])
-  const handleChainOnMouseLeave = useCallback(() => setIsBtnHovered(false), [])
-
   return (
     <div
       css={`
@@ -242,12 +253,9 @@ function EndpointUrl({
         flex-wrap: wrap;
       `}
     >
-      <Button
-        onClick={() => removeSelectedChain(chainId)}
-        onMouseEnter={handleChainOnMouseEnter}
-        onMouseLeave={handleChainOnMouseLeave}
+      <div
         css={`
-          width: ${8 * 10}px;
+          width: ${GU * 9}px;
           height: ${GU * 5}px;
           text-overflow: ellipsis;
           overflow: hidden;
@@ -258,61 +266,87 @@ function EndpointUrl({
           border: 1px solid ${theme.contentBorder};
           text-transform: uppercase;
           display: inline-block;
-
-          &:hover {
-            background: ${theme.negative};
-            border: 2px solid ${theme.negative};
-            content: '-';
-          }
+          text-align: center;
+          line-height: ${GU * 5}px;
         `}
       >
-        {chainImg && !isBtnHovered && (
+        {chainImg && (
           <img
             src={getImageForChain(name)}
             alt={abbrv}
             css={`
               width: ${GU * 2}px;
               height: ${GU * 2}px;
-              margin-right: ${GU}px;
+              margin-right: ${GU - 4}px;
               vertical-align: middle;
             `}
           />
         )}
-        {isBtnHovered ? (
-          <img
-            src={TrashIcon}
-            alt={abbrv}
-            css={`
-              width: ${GU * 3}px;
-              height: ${GU * 3}px;
-            `}
-          />
-        ) : (
-          abbrv
-        )}
-      </Button>
+
+        {abbrv}
+      </div>
       <TextCopy
         value={endpoint}
         css={`
           ${below('medium')
             ? `width: 100%; margin-top: ${GU}px;`
-            : 'width: 85%;'}
+            : 'width: 80%;'}
         `}
         onCopy={() => toast('Endpoint copied to clipboard')}
       />
+      {editMode && (
+        <Button
+          onClick={() => removeSelectedChain(chainId)}
+          css={`
+            width: ${GU * 5}px;
+            height: ${GU * 5}px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            border-radius: ${GU - 4}px;
+            font-size: ${GU + 4}px;
+            padding: 0;
+            white-space: nowrap;
+            border: 1px solid ${theme.accentAlternative};
+            text-transform: uppercase;
+            display: inline-block;
+
+            &:hover {
+              background: ${theme.negative};
+              border: 2px solid ${theme.negative};
+              content: '-';
+            }
+          `}
+        >
+          <img
+            src={TrashIcon}
+            alt={abbrv}
+            css={`
+              width: ${GU * 2}px;
+              height: ${GU * 2}px;
+            `}
+          />
+        </Button>
+      )}
     </div>
   )
 }
 
 interface ChainDropdownProps {
   updateSelectedChains: (chainID: string) => void
+  editMode: boolean
+  toggleEditMode: () => void
 }
 
-function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
+function ChainDropdown({
+  updateSelectedChains,
+  editMode,
+  toggleEditMode,
+}: ChainDropdownProps) {
   const theme = useTheme()
   const [opened, setOpened] = useState(false)
   const [chainName, setChainName] = useState('')
   const [chains, setChains] = useState(NORMALIZED_CHAIN_ID_PREFIXES)
+  const [showEditHelper, setShowEditHelper] = useState<boolean>(false)
 
   const resetChainsData = useCallback(() => {
     setChainName('')
@@ -356,31 +390,78 @@ function ChainDropdown({ updateSelectedChains }: ChainDropdownProps) {
 
   return (
     <div>
-      <ButtonBase
-        element="div"
-        description="Preferences"
-        label="Preferences"
-        onClick={handleToggle}
+      <div
         css={`
-          border: 1px solid ${theme.accentAlternative};
-          border-radius: ${GU - 4}px;
-          width: ${14 * GU}px;
-          height: ${4 * GU}px;
           display: flex;
-          justify-content: center;
-          align-items: center;
-          color: white;
+          justify-content: space-between;
+          width: ${20 * GU}px;
         `}
       >
-        Add new
-        <IconPlus
+        <ButtonBase
+          element="div"
+          description="Preferences"
+          label="Preferences"
+          onClick={toggleEditMode}
+          onMouseEnter={() => setShowEditHelper(true)}
+          onMouseLeave={() => setShowEditHelper(false)}
           css={`
-            width: ${GU * 2}px;
-            height: ${GU * 2}px;
-            margin-left: ${GU + 6}px;
+            background-color: ${editMode && theme.accentAlternative};
+            border: 1px solid ${theme.accentAlternative};
+            border-radius: ${GU - 4}px;
+            width: ${4 * GU}px;
+            height: ${4 * GU}px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            position: relative;
           `}
-        />
-      </ButtonBase>
+        >
+          <img
+            src={EditIcon}
+            alt="edit"
+            css={`
+              width: ${GU * 2}px;
+              height: ${GU * 2}px;
+            `}
+          />
+
+          <MessagePopup
+            show={showEditHelper}
+            css={`
+              top: -${GU * 6}px;
+              left: -${GU * 25}px;
+            `}
+          >
+            Rename or delete your endpoints
+          </MessagePopup>
+        </ButtonBase>
+        <ButtonBase
+          element="div"
+          description="Preferences"
+          label="Preferences"
+          onClick={handleToggle}
+          css={`
+            border: 1px solid ${theme.accentAlternative};
+            border-radius: ${GU - 4}px;
+            width: ${14 * GU}px;
+            height: ${4 * GU}px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+          `}
+        >
+          Add new
+          <IconPlus
+            css={`
+              width: ${GU * 2}px;
+              height: ${GU * 2}px;
+              margin-left: ${GU + 6}px;
+            `}
+          />
+        </ButtonBase>
+      </div>
       <EscapeOutside onEscapeOutside={handleClose} useCapture>
         {opened && (
           <Dropdown

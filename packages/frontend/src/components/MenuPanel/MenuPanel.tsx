@@ -18,7 +18,6 @@ import {
   springs,
   GU,
   RADIUS,
-  textStyle,
   Link,
 } from '@pokt-foundation/ui'
 import IconApp from './IconApp'
@@ -296,6 +295,11 @@ function MenuPanelGroup({
     }
 
     const [nextInstance] = childInstances
+
+    if (nextInstance.id === '/create') {
+      setCreateVisible(true)
+      return
+    }
 
     history.push({
       pathname: `${nextInstance.id}`,
