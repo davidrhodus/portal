@@ -7,13 +7,23 @@ interface LatestBlockProps {
   data: LatestBlockData
 }
 
+function appendZeroToTime(time: string) {
+  return time.length < 2 ? `0${time}` : time
+}
+
 export default function LatestBlock({ data }: LatestBlockProps) {
   const theme = useTheme()
 
   const blockProducedDateInLocalTime = useMemo(() => {
     const blockProducedTimeInDate = new Date(data.producedTime)
+    const hours = appendZeroToTime(
+      blockProducedTimeInDate.getHours().toString()
+    )
+    const minutes = appendZeroToTime(
+      blockProducedTimeInDate.getMinutes().toString()
+    )
 
-    return `${blockProducedTimeInDate.getHours()}:${blockProducedTimeInDate.getMinutes()} ${
+    return `${hours}:${minutes} ${
       Intl.DateTimeFormat().resolvedOptions().timeZone
     }`
   }, [data.producedTime])
