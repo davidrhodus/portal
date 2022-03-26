@@ -117,7 +117,6 @@ export const PRODUCTION_CHAINS = [
   '0048',
   '0047',
   '0049',
-
 ]
 export const ALPHA_CHAINS: string[] = []
 
