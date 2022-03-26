@@ -118,5 +118,10 @@ export const KNOWN_CHAINS = {
     ticker: 'BOBA',
     id: '0048',
     limit: 0,
+  },
+  Moonbeam_MAINNET: {
+    ticker: 'GLMR',
+    id: '0049',
+    limit: 0,
   }
 }
